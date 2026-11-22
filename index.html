@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>背单词 · 四六级 托福 雅思 · 词汇进阶</title>
+<style>
+:root{--c:#2f6fed;--bg:#f4f6fb;--card:#fff;--txt:#1d2433;--sub:#6b7385;--red:#e5484d;--green:#2bb673}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif;background:var(--bg);color:var(--txt)}
+header{background:#fff;border-bottom:1px solid #e3e7ef;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0 8px 0 0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid #d5dbe7;background:#fff;border-radius:18px;padding:6px 12px;font-size:14px;cursor:pointer}
+.tab.on{background:var(--c);color:#fff;border-color:var(--c)}
+.nb{margin-left:auto}
+main{max-width:720px;margin:0 auto;padding:14px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--sub);margin-bottom:10px}
+.bar input[type=number]{width:80px;padding:5px;border:1px solid #d5dbe7;border-radius:6px}
+.bar label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.small{border:1px solid #d5dbe7;background:#fff;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer}
+.card{background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(30,40,80,.08);padding:34px 20px;text-align:center;min-height:300px;display:flex;flex-direction:column;justify-content:center}
+.word{font-size:46px;font-weight:700;word-break:break-word;letter-spacing:.5px}
+.phon{color:var(--sub);font-size:19px;margin-top:8px;font-family:"Lucida Sans Unicode","Arial Unicode MS","Segoe UI",sans-serif}
+.play{border:none;background:#eaf0ff;color:var(--c);border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;margin:12px auto 0}
+.mean{font-size:20px;margin-top:18px;line-height:1.7;white-space:pre-line}
+.mean.hide{color:transparent;background:#eef1f7;border-radius:8px;cursor:pointer;user-select:none}
+.mean.hide::after{content:"点击显示释义";color:var(--sub);font-size:15px;display:block;margin-top:-1.7em}
+.lesson{display:inline-block;font-size:12px;color:var(--c);background:#eaf0ff;border-radius:10px;padding:2px 10px;margin-bottom:10px}
+.rinfo{display:inline-block;font-size:12px;color:var(--c);background:#eaf0ff;border-radius:10px;padding:2px 10px}
+.tag{display:inline-block;font-size:12px;color:var(--red);border:1px solid var(--red);border-radius:10px;padding:1px 8px;margin-top:10px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.btn{padding:15px;font-size:18px;border:none;border-radius:12px;cursor:pointer;color:#fff;font-weight:600}
+.know{background:var(--green)}.dont{background:var(--red)}
+.nav{background:#fff;color:var(--txt);border:1px solid #d5dbe7;font-weight:400;font-size:16px;padding:11px}
+.prog{height:6px;background:#e3e7ef;border-radius:3px;margin-top:12px;overflow:hidden}
+.prog div{height:100%;background:var(--c)}
+.tip{font-size:12px;color:var(--sub);text-align:center;margin-top:10px}
+.round-stats{display:flex;justify-content:center;gap:28px;margin:20px 0 8px}
+.round-stats div{font-size:14px;color:var(--sub)}
+.round-stats b{display:block;font-size:32px;line-height:1.2;color:var(--txt)}
+.round-stats .nk b{color:var(--green)}
+.round-stats .nd b{color:var(--red)}
+#roundCard .sub{color:var(--sub);font-size:14px;margin-top:8px;line-height:1.6}
+#roundCard .btns{max-width:420px;margin:22px auto 0;grid-template-columns:1fr}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:15px}
+th,td{border-bottom:1px solid #e9edf4;padding:8px 6px;text-align:left;vertical-align:top}
+th{background:#f7f9fc;font-weight:600}
+.del{color:var(--red);background:none;border:none;cursor:pointer;font-size:14px}
+.empty{text-align:center;color:var(--sub);padding:40px 0}
+.hidden{display:none!important}
+#printArea{display:none}
+@media (max-width:520px){.word{font-size:36px}.card{padding:26px 14px;min-height:260px}header h1{font-size:16px}}
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  body{background:#fff}
+  header,main{display:none!important}
+  #printArea{display:block}
+  #printArea h2{font-size:18px;margin:0 0 4px}
+  #printArea .meta{font-size:11px;color:#555;margin-bottom:8px}
+  #printArea table{font-size:11.5pt;border:1px solid #888}
+  #printArea th,#printArea td{border:1px solid #888;padding:5px 6px}
+  #printArea th{background:#eee;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea tr{page-break-inside:avoid}
+  #printArea thead{display:table-header-group}
+}
+</style>
+<script src="words.js"></script>
+</head>
+<body>
+<header>
+  <h1>📖 背单词</h1>
+  <div class="tabs" id="tabs"></div>
+  <button class="tab nb" id="msBtn">已掌握</button>
+  <button class="tab" id="nbBtn">生词本 (<span id="nbCount">0</span>)</button>
+</header>
+
+<main id="study">
+  <div class="bar">
+    <span id="pos"></span>
+    <span id="roundInfo" class="rinfo"></span>
+    <span>跳到第 <input type="number" id="jump" min="1"> 个 <button class="small" id="goBtn">跳转</button></span>
+    <span id="lessonJumpWrap" class="hidden">跳到 <select id="lessonSel" class="small"></select></span>
+    <input id="search" placeholder="搜索单词" style="width:110px;padding:5px;border:1px solid #d5dbe7;border-radius:6px"><button class="small" id="searchBtn">查找</button>
+  </div>
+  <div class="bar">
+    <label><input type="checkbox" id="autoPlay" checked> 自动读音</label>
+    <label><input type="checkbox" id="hideMean"> 先隐藏释义</label>
+    <label><input type="checkbox" id="shuffle"> 乱序</label>
+    <button class="small" id="reshuffle" title="重新打乱顺序">🔀 重新打乱</button>
+    <button class="small" id="undoBtn">↶ 撤销</button>
+    <button class="small" id="resetRoundsBtn" title="清空本轮作答，用还未掌握的词重新从第1轮开始">重新从第1轮开始</button>
+  </div>
+  <div class="card" id="wordCard">
+    <div><span class="lesson hidden" id="lessonTag"></span></div>
+    <div class="word" id="word"></div>
+    <div class="phon" id="phon"></div>
+    <button class="play" id="playBtn" title="重新播放">🔊</button>
+    <div class="mean" id="mean"></div>
+    <div><span class="tag hidden" id="inNb">已在生词本</span></div>
+  </div>
+  <div class="btns" id="studyBtns">
+    <button class="btn know" id="knowBtn">认识 ✓</button>
+    <button class="btn dont" id="dontBtn">不会 ✗</button>
+    <button class="btn nav" id="prevBtn">← 上一个</button>
+    <button class="btn nav" id="nextBtn">下一个 →</button>
+  </div>
+
+  <div class="card hidden" id="roundCard" style="min-height:240px">
+    <div id="roundTitle" style="font-size:22px;font-weight:700"></div>
+    <div class="round-stats">
+      <div class="nk">认识<b id="roundKnowN">0</b></div>
+      <div class="nd">不会<b id="roundDontN">0</b></div>
+    </div>
+    <div class="sub" id="roundDetail"></div>
+    <div class="btns">
+      <button class="btn know" id="nextRoundBtn"></button>
+      <button class="btn nav" id="resetRoundFromCard">重新从第1轮开始</button>
+    </div>
+  </div>
+  <div class="card hidden" id="doneCard" style="min-height:200px"><div style="font-size:22px">🎉 这本词书的单词已全部掌握！</div><div class="tip">可以在「已掌握」里恢复单词，或重置本书。也可以点「重新从第1轮开始」（若还有未掌握的词）。</div></div>
+  <div class="prog"><div id="progBar"></div></div>
+  <div class="tip" id="stats"></div>
+  <div class="tip">点「认识」= 已掌握，这个词会从词书中移除、不再出现；点「不会」会加入生词本，并留到下一轮再背。</div>
+  <div class="tip">整本过完后，只把本轮点了「不会」的词再过一轮，一轮轮变少，直到都认识为止。用「上一个 / 下一个」跳过不答的词仍留在本轮，不会被算作「不会」；本轮所有词都点过「认识」或「不会」后才会结束。</div>
+  <div class="tip">电脑快捷键：← 上一个 · → 下一个 · ↑ 认识 · ↓ 不会 · 空格 读音</div>
+</main>
+
+<main id="mastered" class="hidden">
+  <div class="bar">
+    <button class="small" id="msBack">← 返回背单词</button>
+    <span id="msInfo"></span>
+    <button class="small" id="msReset" style="color:var(--red)">重置本书（全部恢复）</button>
+  </div>
+  <div id="msList"></div>
+</main>
+
+<main id="notebook" class="hidden">
+  <div class="bar">
+    <button class="small" id="backBtn">← 返回背单词</button>
+    <select id="nbFilter" class="small"><option value="">全部词书</option></select>
+    <button class="small" id="pdfBtn" style="background:var(--c);color:#fff;border-color:var(--c)">导出 PDF / 打印</button>
+    <button class="small" id="csvBtn">导出 CSV（Excel）</button>
+    <button class="small" id="clearBtn" style="color:var(--red)">清空生词本</button>
+  </div>
+  <div class="tip" style="text-align:left;margin:0 0 8px">导出 PDF：点按钮后在打印窗口里把「目标打印机」选成「另存为 PDF / Save as PDF」，就能保存成 PDF；也可以直接连打印机打印。</div>
+  <div id="nbList"></div>
+</main>
+
+<div id="printArea"></div>
+
+<script>
+(function(){
+var BOOKS=window.WORDBOOKS, KEYS=Object.keys(BOOKS);
+var LS=function(k,v){if(v===undefined){try{return JSON.parse(localStorage.getItem('vocab_'+k))}catch(e){return null}}localStorage.setItem('vocab_'+k,JSON.stringify(v))};
+var settings=Object.assign({book:'toefl',autoPlay:true,hideMean:false},LS('settings')||{});
+var progress=LS('progress')||{}; // book -> {i, shuffle, seed, known:n, unknown:n}
+var nb=LS('notebook')||[]; // [{w,p,m,b,t}]
+var rounds=LS('rounds_v1')||{}; // book -> {n, queue, ans, phase, undo}
+var order=[], cur=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function fmtPhon(p){if(!p)return'';p=p.replace(/'/g,'ˈ').replace(/,/g,'ˌ');return'/'+p+'/'}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffleArr(arr,seed){var r=rng(seed);for(var j=arr.length-1;j>0;j--){var k=Math.floor(r()*(j+1));var t=arr[j];arr[j]=arr[k];arr[k]=t}return arr}
+function P(){var b=settings.book;if(!progress[b])progress[b]={i:0,shuffle:false,seed:1,known:0,unknown:0};if(!progress[b].mastered)progress[b].mastered=[];return progress[b]}
+function masteredSet(){var ms={};P().mastered.forEach(function(w){ms[w]=1});return ms}
+function save(){LS('settings',settings);LS('progress',progress);LS('notebook',nb);LS('rounds_v1',rounds)}
+function wordOf(ix){return BOOKS[settings.book].words[ix][0]}
+function allIndices(){var n=BOOKS[settings.book].words.length,a=[];for(var i=0;i<n;i++)a.push(i);return a}
+function applyShuffle(arr){var p=P();if(p.shuffle){if(!p.seed||p.seed===1)p.seed=Date.now()%100000+2;shuffleArr(arr,p.seed)}return arr}
+
+// Round state. New localStorage key vocab_rounds_v1 — existing keys are unchanged.
+// Skip rule: 上一个/下一个/跳转 only move among unanswered words in the current round.
+// Unanswered (skipped) words stay in the round and are NOT treated as 不会.
+// A round ends only when every word in the queue has been marked 认识 or 不会.
+function startRound(n, indices, keepSeed){
+  var p=P(), queue, ms=masteredSet();
+  if(indices){queue=indices.slice()}
+  else{
+    queue=allIndices();
+    if(p.shuffle){if(!p.seed||p.seed===1)p.seed=Date.now()%100000+2;shuffleArr(queue,p.seed)}
+    queue=queue.filter(function(ix){return!ms[wordOf(ix)]});
+  }
+  if(indices&&p.shuffle){if(!p.seed||p.seed===1)p.seed=Date.now()%100000+2;shuffleArr(queue,p.seed)}
+  rounds[settings.book]={n:n||1,queue:queue,ans:{},phase:'study',undo:[]};
+  p.i=0;
+  return rounds[settings.book];
+}
+function R(){
+  var b=settings.book,r=rounds[b];
+  if(!r||!r.queue||!r.ans){
+    // First visit (or corrupt data): Round 1 = remaining unmastered words, keep current position.
+    var keep=P().i;
+    r=startRound(1,null,true);
+    if(keep>=0)P().i=keep;
+  }
+  if(!r.undo)r.undo=[];
+  if(!r.phase)r.phase='study';
+  if(!r.n)r.n=1;
+  return r;
+}
+function countRound(){
+  var r=R(),words=BOOKS[settings.book].words,know=0,dont=0,i,w,a;
+  for(i=0;i<r.queue.length;i++){
+    w=words[r.queue[i]][0];a=r.ans[w];
+    if(a==='know')know++;
+    else if(a==='dont')dont++;
+  }
+  return{know:know,dont:dont,answered:know+dont,total:r.queue.length};
+}
+function unansweredLeft(r){
+  r=r||R();
+  var ms=masteredSet(),words=BOOKS[settings.book].words;
+  return r.queue.filter(function(ix){var w=words[ix][0];return!r.ans[w]&&!ms[w]}).length;
+}
+function resetRounds(){
+  startRound(1,null);
+  buildOrder();
+  save();
+}
+
+function rebuildQueueView(newSeed){
+  var p=P(),r=R(),ms=masteredSet(),W=BOOKS[settings.book].words;
+  var curIdx=order.length?order[p.i]:-1,done=[],rest=[];
+  if(newSeed)p.seed=Date.now()%100000+2;
+  if(p.shuffle&&(!p.seed||p.seed===1))p.seed=Date.now()%100000+2;
+  r.queue.forEach(function(ix){var w=W[ix][0];if(r.ans[w]||ms[w])done.push(ix);else rest.push(ix)});
+  if(p.shuffle)shuffleArr(rest,p.seed);
+  else rest.sort(function(a,b){return a-b});
+  r.queue=done.concat(rest);
+  buildOrder();
+  p.i=curIdx>=0&&order.indexOf(curIdx)>=0?order.indexOf(curIdx):0;
+}
+function buildOrder(){var r=R(),ms=masteredSet(),W=BOOKS[settings.book].words;
+  order=r.queue.filter(function(ix){var w=W[ix][0];return!r.ans[w]&&!ms[w]});
+  if(unansweredLeft(r)===0&&r.queue.length>0&&r.phase!=='summary'&&countRound().answered>0)r.phase='summary'}
+function tabLabels(){document.querySelectorAll('.tab[data-k]').forEach(function(t){var k=t.dataset.k,tot=BOOKS[k].words.length,m=(progress[k]&&progress[k].mastered)?progress[k].mastered.length:0;t.textContent=BOOKS[k].name+' · '+(tot-m)})}
+function inNb(w,b){for(var i=0;i<nb.length;i++)if(nb[i].w===w&&nb[i].b===b)return true;return false}
+function bookLessons(){var W=BOOKS[settings.book].words,seen={},L=[],src,i,les;
+  src=(R().phase==='summary')?[]:order;
+  for(i=0;i<src.length;i++){les=W[src[i]][3];if(les&&!seen[les]){seen[les]=1;L.push(les)}}
+  return L}
+function fillLessonSel(){var L=bookLessons(),wrap=$('lessonJumpWrap');if(!L.length){wrap.classList.add('hidden');return}wrap.classList.remove('hidden');
+  var sel=$('lessonSel'),v=sel.value;sel.innerHTML=L.map(function(x){return'<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');
+  if(v&&L.indexOf(v)>=0)sel.value=v}
+function jumpLesson(les){les=les||$('lessonSel').value;if(!les||R().phase==='summary')return;var W=BOOKS[settings.book].words;
+  for(var i=0;i<order.length;i++)if(W[order[i]][3]===les){P().i=i;show();return}
+  alert('本轮里没有「'+les+'」还没作答的单词')}
+
+// tabs
+KEYS.forEach(function(k){var b=document.createElement('button');b.className='tab';b.textContent=BOOKS[k].name+' · '+BOOKS[k].words.length;b.dataset.k=k;b.onclick=function(){settings.book=k;init()};$('tabs').appendChild(b);
+  var o=document.createElement('option');o.value=k;o.textContent=BOOKS[k].name;$('nbFilter').appendChild(o)});
+
+// audio
+var audio=new Audio(), lastWord='';
+function speakFallback(w){try{if(!window.speechSynthesis)return;speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(w);u.lang='en-US';u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
+function play(w){w=w||(cur&&cur[0]);if(!w)return;lastWord=w;
+  try{audio.pause()}catch(e){}
+  audio=new Audio('https://dict.youdao.com/dictvoice?audio='+encodeURIComponent(w)+'&type=2');
+  var done=false;audio.onerror=function(){if(!done){done=true;speakFallback(w)}};
+  var pr=audio.play();if(pr&&pr.catch)pr.catch(function(err){if(done)return;done=true;
+    if(err&&err.name==='NotAllowedError'){/* 浏览器要求先点一下页面 */}else speakFallback(w)})}
+
+function hideStudyCard(hide){
+  $('wordCard').classList.toggle('hidden',hide);
+  $('studyBtns').classList.toggle('hidden',hide);
+}
+function showSummary(){
+  var r=R(),c=countRound(),y=c.dont,n=r.n;
+  hideStudyCard(true);
+  $('doneCard').classList.add('hidden');
+  $('roundCard').classList.remove('hidden');
+  $('roundKnowN').textContent=c.know;
+  $('roundDontN').textContent=c.dont;
+  $('pos').textContent=BOOKS[settings.book].name+'：剩余 '+(BOOKS[settings.book].words.length-P().mastered.length)+' / 总数 '+BOOKS[settings.book].words.length+' · 已掌握 '+P().mastered.length;
+  $('roundInfo').textContent='第'+n+'轮完成 · 已答 '+c.answered+'/'+c.total;
+  $('undoBtn').disabled=!((r.undo&&r.undo.length)||P().mastered.length);
+  if(y>0){
+    $('roundTitle').textContent='第'+n+'轮完成';
+    $('roundDetail').textContent='本轮认识 '+c.know+' 个，不会 '+y+' 个。下一轮只过这 '+y+' 个还不会的词。';
+    $('nextRoundBtn').textContent='开始第'+(n+1)+'轮（'+y+'个词）';
+    $('nextRoundBtn').classList.remove('hidden');
+  }else{
+    $('roundTitle').textContent='🎉 第'+n+'轮全部认识！';
+    var left=BOOKS[settings.book].words.length-P().mastered.length;
+    $('roundDetail').textContent=left?('本轮 '+c.total+' 个词全部点了「认识」。词书里还有 '+left+' 个未掌握的词（例如从「已掌握」里恢复的），可重新从第1轮开始。'):('本轮 '+c.total+' 个词全部点了「认识」，没有不会的词了。这本词书已经全部掌握！');
+    $('nextRoundBtn').classList.add('hidden');
+  }
+  tabLabels();$('nbCount').textContent=nb.length;
+  $('progBar').style.width=(P().mastered.length/BOOKS[settings.book].words.length*100)+'%';
+  $('stats').textContent='进度条 = 已掌握比例 · 本书点「不会」'+P().unknown+' 次';
+  fillLessonSel();
+  save();
+}
+function show(){var p=P(),words=BOOKS[settings.book].words,total=words.length,r=R(),c=countRound();
+  tabLabels();$('nbCount').textContent=nb.length;
+  $('undoBtn').disabled=!((r.undo&&r.undo.length)||p.mastered.length);
+  if(r.phase==='summary'){showSummary();return}
+  $('roundCard').classList.add('hidden');
+  var empty=order.length===0;
+  $('doneCard').classList.toggle('hidden',!empty);
+  hideStudyCard(empty);
+  $('pos').textContent=BOOKS[settings.book].name+'：剩余 '+(total-p.mastered.length)+' / 总数 '+total+' · 已掌握 '+p.mastered.length;
+  $('roundInfo').textContent=empty?'':('第'+r.n+'轮 · 已答 '+c.answered+'/'+c.total);
+  if(empty){cur=null;$('lessonTag').textContent='';$('lessonTag').classList.add('hidden');$('progBar').style.width='100%';$('stats').textContent='';fillLessonSel();save();return}
+  if(p.i<0)p.i=0;if(p.i>=order.length)p.i=order.length-1;
+  cur=words[order[p.i]];
+  $('word').textContent=cur[0];$('phon').textContent=fmtPhon(cur[1]);
+  if(cur[3]){$('lessonTag').textContent=cur[3];$('lessonTag').classList.remove('hidden');if($('lessonSel').value!==cur[3])$('lessonSel').value=cur[3]}
+  else{$('lessonTag').textContent='';$('lessonTag').classList.add('hidden')}
+  $('mean').textContent=cur[2].replace(/；(?=[a-z]+\.)/g,'\n');
+  $('mean').className='mean'+(settings.hideMean?' hide':'');
+  $('inNb').classList.toggle('hidden',!inNb(cur[0],settings.book));
+  $('pos').textContent+=' · 当前第 '+(p.i+1)+' 个（本轮剩余 '+order.length+'）';
+  $('jump').max=order.length;$('progBar').style.width=(p.mastered.length/total*100)+'%';
+  $('stats').textContent='进度条 = 已掌握比例 · 第'+r.n+'轮剩余 '+order.length+' / 本轮 '+c.total+' · 本书点「不会」'+p.unknown+' 次';
+  $('nbCount').textContent=nb.length;
+  fillLessonSel();
+  save();
+  if(settings.autoPlay)play(cur[0]);}
+function init(){document.querySelectorAll('.tab[data-k]').forEach(function(t){t.classList.toggle('on',t.dataset.k===settings.book)});
+  $('autoPlay').checked=settings.autoPlay;$('hideMean').checked=settings.hideMean;$('shuffle').checked=P().shuffle;
+  buildOrder();fillLessonSel();show()}
+function next(){if(R().phase==='summary')return;var p=P();if(p.i<order.length-1){p.i++;show()}else{alert('已经是本轮还没作答的最后一个了。跳过的词仍留在本轮，可用「上一个」或「跳转」回去作答；全部点过「认识」或「不会」后才会进入下一轮。')}}
+function prev(){if(R().phase==='summary')return;var p=P();if(p.i>0){p.i--;show()}}
+function afterAnswer(){
+  var p=P(),r=R();
+  buildOrder();
+  if(r.phase==='summary'){show();return}
+  if(p.i>=order.length)p.i=order.length?0:0;
+  show();
+}
+function know(){if(!cur||R().phase==='summary')return;var p=P(),r=R(),w=cur[0];p.known++;if(p.mastered.indexOf(w)<0)p.mastered.push(w);
+  r.ans[w]='know';r.undo.push({type:'know',w:w});afterAnswer()}
+function restore(w){var p=P(),k=p.mastered.indexOf(w);if(k<0)return;p.mastered.splice(k,1);
+  var r=R();if(r.ans[w]==='know')delete r.ans[w];
+  if(r.phase==='summary')r.phase='study';
+  buildOrder();
+  var W=BOOKS[settings.book].words;for(var i=0;i<order.length;i++)if(W[order[i]][0]===w){p.i=i;break}}
+function undo(){var p=P(),r=R();
+  if(r.undo&&r.undo.length){
+    var a=r.undo.pop(),w=a.w;
+    if(r.ans[w]===a.type)delete r.ans[w];
+    if(a.type==='know'){var k=p.mastered.indexOf(w);if(k>=0)p.mastered.splice(k,1)}
+    if(a.type==='dont'&&a.addedNb){
+      for(var i=nb.length-1;i>=0;i--)if(nb[i].w===w&&nb[i].b===settings.book){nb.splice(i,1);break}
+    }
+    if(r.phase==='summary')r.phase='study';
+    buildOrder();
+    var W=BOOKS[settings.book].words;for(var j=0;j<order.length;j++)if(W[order[j]][0]===w){p.i=j;break}
+    show();return;
+  }
+  if(!p.mastered.length)return;restore(p.mastered[p.mastered.length-1]);show()}
+function dont(){if(!cur||R().phase==='summary')return;var r=R(),w=cur[0],addedNb=false;P().unknown++;
+  if(!inNb(w,settings.book)){nb.push({w:w,p:cur[1],m:cur[2],b:settings.book,t:Date.now()});addedNb=true}
+  r.ans[w]='dont';r.undo.push({type:'dont',w:w,addedNb:addedNb});afterAnswer()}
+function confirmResetRounds(){
+  if(!confirm('确定重新从第1轮开始吗？已掌握的单词和生词本不会被清除，当前轮次的作答记录会清空，将用还未掌握的词重新排第1轮。'))return;
+  R().phase='study';
+  resetRounds();show();
+}
+function beginNextRound(){
+  var r=R(),W=BOOKS[settings.book].words;
+  var nextQ=r.queue.filter(function(ix){return r.ans[W[ix][0]]==='dont'});
+  if(!nextQ.length)return;
+  startRound((r.n||1)+1,nextQ);
+  buildOrder();show();
+}
+$('knowBtn').onclick=know;$('undoBtn').onclick=undo;$('dontBtn').onclick=dont;$('nextBtn').onclick=next;$('prevBtn').onclick=prev;
+$('nextRoundBtn').onclick=beginNextRound;
+$('resetRoundsBtn').onclick=confirmResetRounds;
+$('resetRoundFromCard').onclick=confirmResetRounds;
+$('playBtn').onclick=function(){play()};
+$('mean').onclick=function(){this.classList.remove('hide')};
+$('autoPlay').onchange=function(){settings.autoPlay=this.checked;save()};
+$('hideMean').onchange=function(){settings.hideMean=this.checked;if(R().phase!=='summary')show()};
+$('shuffle').onchange=function(){P().shuffle=this.checked;rebuildQueueView(false);show()};
+$('reshuffle').onclick=function(){var p=P();p.shuffle=true;$('shuffle').checked=true;rebuildQueueView(true);P().i=0;show()};
+$('jump').placeholder='序号';$('goBtn').onclick=function(){if(R().phase==='summary')return;var v=parseInt($('jump').value,10);if(v>=1&&v<=order.length){P().i=v-1;show()}};
+$('jump').onkeydown=function(e){if(e.key==='Enter')$('goBtn').click()};
+$('lessonSel').onchange=function(){jumpLesson(this.value)};
+$('searchBtn').onclick=function(){var q=$('search').value.trim().toLowerCase();if(!q)return;var w=BOOKS[settings.book].words,r=R(),i;
+  if(r.phase==='summary'){alert('请先开始下一轮，或撤销回到本轮再查找');return}
+  for(i=0;i<order.length;i++)if(w[order[i]][0].toLowerCase()===q){P().i=i;show();return}
+  if(P().mastered.map(function(x){return x.toLowerCase()}).indexOf(q)>=0){alert('「'+q+'」已经掌握，已从词书移除（可在「已掌握」里恢复）');return}
+  for(i=0;i<r.queue.length;i++){
+    var ww=w[r.queue[i]][0];
+    if(ww.toLowerCase()===q){alert(r.ans[ww]==='dont'?'「'+q+'」在本轮已点过「不会」，会进入下一轮':'「'+q+'」在本轮已经作答');return}
+  }
+  for(i=0;i<order.length;i++)if(w[order[i]][0].toLowerCase().indexOf(q)===0){P().i=i;show();return}
+  alert('当前词书的本轮里没有找到：'+q)};
+$('search').onkeydown=function(e){if(e.key==='Enter')$('searchBtn').click()};
+document.addEventListener('keydown',function(e){if(!$('notebook').classList.contains('hidden')||/INPUT|SELECT/.test(e.target.tagName))return;
+  if(!$('mastered').classList.contains('hidden'))return;
+  if(R().phase==='summary'){if(e.key==='Enter'&&!$('nextRoundBtn').classList.contains('hidden'))beginNextRound();return}
+  if(e.key==='ArrowRight')next();else if(e.key==='ArrowLeft')prev();else if(e.key==='ArrowUp'){e.preventDefault();know()}else if(e.key==='ArrowDown'){e.preventDefault();dont()}else if(e.key===' '){e.preventDefault();play()}});
+
+// mastered view
+function renderMs(){var p=P(),L=p.mastered.slice().reverse(),W=BOOKS[settings.book].words,map={};W.forEach(function(x){map[x[0]]=x});
+  $('msInfo').textContent=BOOKS[settings.book].name+' · 已掌握 '+L.length+' 个（最近的在最上面）';
+  if(!L.length){$('msList').innerHTML='<div class="empty">还没有已掌握的单词。背单词时点「认识」就会移到这里。</div>';return}
+  var h='<table><thead><tr><th>#</th><th>单词</th><th>中文释义</th><th></th></tr></thead><tbody>';
+  L.forEach(function(w,i){var x=map[w]||[w,'',''];h+='<tr><td>'+(i+1)+'</td><td><b>'+esc(w)+'</b></td><td>'+esc(x[2])+'</td><td><button class="del" style="color:var(--c)" data-restore="'+esc(w)+'">恢复</button></td></tr>'});
+  $('msList').innerHTML=h+'</tbody></table>'}
+$('msList').onclick=function(e){var w=e.target.dataset.restore;if(w){restore(w);save();renderMs();tabLabels()}};
+$('msBtn').onclick=function(){$('study').classList.add('hidden');$('notebook').classList.add('hidden');$('mastered').classList.remove('hidden');renderMs()};
+$('msBack').onclick=function(){$('mastered').classList.add('hidden');$('study').classList.remove('hidden');show()};
+$('msReset').onclick=function(){var p=P();if(!p.mastered.length)return;if(confirm('确定把「'+BOOKS[settings.book].name+'」的 '+p.mastered.length+' 个已掌握单词全部恢复到词书吗？本轮进度也会重置，从第1轮重新开始。')){p.mastered=[];p.i=0;resetRounds();renderMs();tabLabels()}};
+
+// notebook
+function filtered(){var f=$('nbFilter').value;return nb.filter(function(x){return!f||x.b===f})}
+function renderNb(){$('nbCount').textContent=nb.length;var L=filtered();
+  if(!L.length){$('nbList').innerHTML='<div class="empty">生词本是空的。背单词时点「不会」就会加进来。</div>';return}
+  var h='<table><thead><tr><th>序号</th><th>单词</th><th>音标</th><th>中文释义</th><th>词书</th><th></th></tr></thead><tbody>';
+  L.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td><b>'+esc(x.w)+'</b> <button class="del" style="color:var(--c)" data-play="'+esc(x.w)+'">🔊</button></td><td>'+esc(fmtPhon(x.p))+'</td><td>'+esc(x.m)+'</td><td>'+esc(BOOKS[x.b]?BOOKS[x.b].name.split(' ')[0]:'')+'</td><td><button class="del" data-del="'+nb.indexOf(x)+'">删除</button></td></tr>'});
+  $('nbList').innerHTML=h+'</tbody></table>'}
+$('nbList').onclick=function(e){var d=e.target.dataset;if(d.del!==undefined){nb.splice(+d.del,1);save();renderNb()}else if(d.play)play(d.play)};
+$('nbFilter').onchange=renderNb;
+$('nbBtn').onclick=function(){$('study').classList.add('hidden');$('mastered').classList.add('hidden');$('notebook').classList.remove('hidden');renderNb()};
+$('backBtn').onclick=function(){$('notebook').classList.add('hidden');$('study').classList.remove('hidden');show()};
+$('clearBtn').onclick=function(){if(!nb.length)return;var f=$('nbFilter').value;if(confirm(f?'确定清空「'+BOOKS[f].name+'」的生词吗？':'确定清空整个生词本吗？')){nb=f?nb.filter(function(x){return x.b!==f}):[];save();renderNb()}};
+
+function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+function buildPrint(){var L=filtered(),f=$('nbFilter').value;
+  var h='<h2>生词本'+(f?' · '+esc(BOOKS[f].name):'')+'</h2><div class="meta">导出日期：'+today()+' · 共 '+L.length+' 个单词</div>';
+  h+='<table><colgroup><col style="width:7%"><col style="width:17%"><col style="width:17%"><col style="width:41%"><col style="width:18%"></colgroup><thead><tr><th>序号</th><th>单词</th><th>音标</th><th>中文释义</th><th>笔记</th></tr></thead><tbody>';
+  L.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td><b>'+esc(x.w)+'</b></td><td>'+esc(fmtPhon(x.p))+'</td><td>'+esc(x.m)+'</td><td></td></tr>'});
+  $('printArea').innerHTML=h+'</tbody></table>';return L.length}
+window.buildPrint=buildPrint;
+$('pdfBtn').onclick=function(){if(!buildPrint()){alert('生词本是空的');return}var t=document.title;document.title='生词本_'+today();window.print();setTimeout(function(){document.title=t},1000)};
+$('csvBtn').onclick=function(){var L=filtered();if(!L.length){alert('生词本是空的');return}
+  var q=function(s){return'"'+String(s).replace(/"/g,'""')+'"'};
+  var rows=[['序号','单词','音标','中文释义','词书']].concat(L.map(function(x,i){return[i+1,x.w,fmtPhon(x.p),x.m,BOOKS[x.b]?BOOKS[x.b].name:'']}));
+  var blob=new Blob(['\ufeff'+rows.map(function(r){return r.map(q).join(',')}).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='生词本_'+today()+'.csv';document.body.appendChild(a);a.click();a.remove()};
+init();
+})();
+</script>
+</body>
+</html>
