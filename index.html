@@ -13,7 +13,21 @@ header h1{font-size:18px;margin:0 8px 0 0}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tab{border:1px solid #d5dbe7;background:#fff;border-radius:18px;padding:6px 12px;font-size:14px;cursor:pointer}
 .tab.on{background:var(--c);color:#fff;border-color:var(--c)}
-.nb{margin-left:auto}
+.header-right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sync-area{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--sub)}
+.sync-area #syncEmail{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#syncStatus{font-size:12px;color:var(--sub)}
+#syncStatus.err{color:var(--red)}
+.modal{position:fixed;inset:0;background:rgba(20,24,36,.4);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-card{background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(30,40,80,.18);padding:22px 20px 16px;width:100%;max-width:380px}
+.modal-card h2{margin:0 0 8px;font-size:18px}
+.modal-card .sub{color:var(--sub);font-size:13px;line-height:1.55;margin:0 0 14px;word-break:keep-all}
+.modal-card input{width:100%;padding:9px 10px;border:1px solid #d5dbe7;border-radius:8px;font-size:15px;margin-bottom:8px}
+.modal-card .row{display:flex;gap:8px;margin-top:4px}
+.modal-card .row .btn{flex:1;padding:11px;font-size:15px}
+.modal-card .linkish{border:none;background:none;color:var(--c);cursor:pointer;font-size:13px;padding:8px 0}
+.modal-card #loginMsg{font-size:13px;min-height:1.4em;margin:4px 0 0;color:var(--c)}
+.modal-card #loginMsg.err{color:var(--red)}
 main{max-width:720px;margin:0 auto;padding:14px}
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--sub);margin-bottom:10px}
 .bar input[type=number]{width:80px;padding:5px;border:1px solid #d5dbe7;border-radius:6px}
@@ -66,13 +80,26 @@ th{background:#f7f9fc;font-weight:600}
 }
 </style>
 <script src="words.js"></script>
+<script src="sync-merge.js"></script>
+<!-- 同步配置在下方主脚本开头的 SUPABASE_URL / SUPABASE_ANON_KEY，见 SUPABASE-SETUP-中文.md -->
 </head>
 <body>
 <header>
   <h1>📖 背单词</h1>
   <div class="tabs" id="tabs"></div>
-  <button class="tab nb" id="msBtn">已掌握</button>
-  <button class="tab" id="nbBtn">生词本 (<span id="nbCount">0</span>)</button>
+  <div class="header-right">
+    <div id="syncArea" class="sync-area hidden">
+      <button class="tab" id="loginBtn" type="button">登录同步</button>
+      <span id="syncLoggedIn" class="hidden">
+        <span id="syncEmail"></span>
+        <button class="small" id="syncNowBtn" type="button">立即同步</button>
+        <button class="small" id="logoutBtn" type="button">退出</button>
+      </span>
+      <span id="syncStatus"></span>
+    </div>
+    <button class="tab" id="msBtn">已掌握</button>
+    <button class="tab" id="nbBtn">生词本 (<span id="nbCount">0</span>)</button>
+  </div>
 </header>
 
 <main id="study">
@@ -147,17 +174,40 @@ th{background:#f7f9fc;font-weight:600}
   <div id="nbList"></div>
 </main>
 
+<div id="loginModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="modal-card">
+    <h2 id="loginTitle">登录同步</h2>
+    <p class="sub">登录后，生词本、已掌握和各词书进度可在不同设备间同步。不登录也可以继续用，数据只保存在这台设备上。</p>
+    <input type="email" id="loginEmail" placeholder="邮箱" autocomplete="username">
+    <input type="password" id="loginPassword" placeholder="密码（至少 6 位）" autocomplete="current-password">
+    <div class="row">
+      <button class="btn know" id="signInBtn" type="button">登录</button>
+      <button class="btn nav" id="signUpBtn" type="button">注册</button>
+    </div>
+    <button class="linkish" id="magicLinkBtn" type="button">用邮箱链接登录</button>
+    <div id="loginMsg"></div>
+    <div class="row">
+      <button class="btn nav" id="loginClose" type="button">取消</button>
+    </div>
+  </div>
+</div>
 <div id="printArea"></div>
 
 <script>
 (function(){
+// 登录同步（Supabase）。创建项目后把下面两项填上即可启用（见 SUPABASE-SETUP-中文.md）。
+// 都留空时完全离线，行为和现在一样，不会加载任何外部脚本，也不会出现登录按钮。
+const SUPABASE_URL='https://mghdiryzcuinhimsifzz.supabase.co', SUPABASE_ANON_KEY='sb_publishable_n-6CuY95TJ9uvhbNE8nLZQ_C72zFD65';
 var BOOKS=window.WORDBOOKS, KEYS=Object.keys(BOOKS);
 var LS=function(k,v){if(v===undefined){try{return JSON.parse(localStorage.getItem('vocab_'+k))}catch(e){return null}}localStorage.setItem('vocab_'+k,JSON.stringify(v))};
 var settings=Object.assign({book:'toefl',autoPlay:true,hideMean:false},LS('settings')||{});
-var progress=LS('progress')||{}; // book -> {i, shuffle, seed, known:n, unknown:n}
+var progress=LS('progress')||{}; // book -> {i, shuffle, seed, known:n, unknown:n, mastered, updatedAt, masteredMeta, masteredTombstones}
 var nb=LS('notebook')||[]; // [{w,p,m,b,t}]
-var rounds=LS('rounds_v1')||{}; // book -> {n, queue, ans, phase, undo}
+var rounds=LS('rounds_v1')||{}; // book -> {n, queue, ans, phase, undo, updatedAt}
+var syncMeta=LS('sync_meta')||{notebookTombstones:[]};
+if(!syncMeta.notebookTombstones)syncMeta.notebookTombstones=[];
 var order=[], cur=null;
+var applyingSync=false;
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function fmtPhon(p){if(!p)return'';p=p.replace(/'/g,'ˈ').replace(/,/g,'ˌ');return'/'+p+'/'}
@@ -165,7 +215,13 @@ function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.i
 function shuffleArr(arr,seed){var r=rng(seed);for(var j=arr.length-1;j>0;j--){var k=Math.floor(r()*(j+1));var t=arr[j];arr[j]=arr[k];arr[k]=t}return arr}
 function P(){var b=settings.book;if(!progress[b])progress[b]={i:0,shuffle:false,seed:1,known:0,unknown:0};if(!progress[b].mastered)progress[b].mastered=[];return progress[b]}
 function masteredSet(){var ms={};P().mastered.forEach(function(w){ms[w]=1});return ms}
-function save(){LS('settings',settings);LS('progress',progress);LS('notebook',nb);LS('rounds_v1',rounds)}
+function persist(){LS('settings',settings);LS('progress',progress);LS('notebook',nb);LS('rounds_v1',rounds);LS('sync_meta',syncMeta)}
+function markBookDirty(){var p=P();p.updatedAt=Date.now();if(rounds[settings.book])rounds[settings.book].updatedAt=Date.now()}
+function save(){if(!applyingSync){/* timestamps only on real edits, via markBookDirty */}persist();if(!applyingSync)scheduleSync()}
+function upsertNbTombstone(b,w){var L=syncMeta.notebookTombstones,i,now=Date.now();for(i=0;i<L.length;i++)if(L[i].b===b&&L[i].w===w){L[i].deletedAt=now;return}L.push({b:b,w:w,deletedAt:now})}
+function removeNbTombstone(b,w){syncMeta.notebookTombstones=syncMeta.notebookTombstones.filter(function(x){return!(x.b===b&&x.w===w)})}
+function markMastered(w){var p=P();if(p.mastered.indexOf(w)<0)p.mastered.push(w);if(!p.masteredMeta)p.masteredMeta={};p.masteredMeta[w]=Date.now();if(p.masteredTombstones)delete p.masteredTombstones[w]}
+function unmarkMastered(w){var p=P(),k=p.mastered.indexOf(w);if(k>=0)p.mastered.splice(k,1);if(!p.masteredTombstones)p.masteredTombstones={};p.masteredTombstones[w]=Date.now()}
 function wordOf(ix){return BOOKS[settings.book].words[ix][0]}
 function allIndices(){var n=BOOKS[settings.book].words.length,a=[];for(var i=0;i<n;i++)a.push(i);return a}
 function applyShuffle(arr){var p=P();if(p.shuffle){if(!p.seed||p.seed===1)p.seed=Date.now()%100000+2;shuffleArr(arr,p.seed)}return arr}
@@ -216,6 +272,7 @@ function unansweredLeft(r){
 }
 function resetRounds(){
   startRound(1,null);
+  markBookDirty();
   buildOrder();
   save();
 }
@@ -245,7 +302,7 @@ function fillLessonSel(){var L=bookLessons(),wrap=$('lessonJumpWrap');if(!L.leng
   var sel=$('lessonSel'),v=sel.value;sel.innerHTML=L.map(function(x){return'<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');
   if(v&&L.indexOf(v)>=0)sel.value=v}
 function jumpLesson(les){les=les||$('lessonSel').value;if(!les||R().phase==='summary')return;var W=BOOKS[settings.book].words;
-  for(var i=0;i<order.length;i++)if(W[order[i]][3]===les){P().i=i;show();return}
+  for(var i=0;i<order.length;i++)if(W[order[i]][3]===les){P().i=i;markBookDirty();show();return}
   alert('本轮里没有「'+les+'」还没作答的单词')}
 
 // tabs
@@ -322,8 +379,8 @@ function show(){var p=P(),words=BOOKS[settings.book].words,total=words.length,r=
 function init(){document.querySelectorAll('.tab[data-k]').forEach(function(t){t.classList.toggle('on',t.dataset.k===settings.book)});
   $('autoPlay').checked=settings.autoPlay;$('hideMean').checked=settings.hideMean;$('shuffle').checked=P().shuffle;
   buildOrder();fillLessonSel();show()}
-function next(){if(R().phase==='summary')return;var p=P();if(p.i<order.length-1){p.i++;show()}else{alert('已经是本轮还没作答的最后一个了。跳过的词仍留在本轮，可用「上一个」或「跳转」回去作答；全部点过「认识」或「不会」后才会进入下一轮。')}}
-function prev(){if(R().phase==='summary')return;var p=P();if(p.i>0){p.i--;show()}}
+function next(){if(R().phase==='summary')return;var p=P();if(p.i<order.length-1){p.i++;markBookDirty();show()}else{alert('已经是本轮还没作答的最后一个了。跳过的词仍留在本轮，可用「上一个」或「跳转」回去作答；全部点过「认识」或「不会」后才会进入下一轮。')}}
+function prev(){if(R().phase==='summary')return;var p=P();if(p.i>0){p.i--;markBookDirty();show()}}
 function afterAnswer(){
   var p=P(),r=R();
   buildOrder();
@@ -331,30 +388,33 @@ function afterAnswer(){
   if(p.i>=order.length)p.i=order.length?0:0;
   show();
 }
-function know(){if(!cur||R().phase==='summary')return;var p=P(),r=R(),w=cur[0];p.known++;if(p.mastered.indexOf(w)<0)p.mastered.push(w);
-  r.ans[w]='know';r.undo.push({type:'know',w:w});afterAnswer()}
-function restore(w){var p=P(),k=p.mastered.indexOf(w);if(k<0)return;p.mastered.splice(k,1);
+function know(){if(!cur||R().phase==='summary')return;var p=P(),r=R(),w=cur[0];p.known++;markMastered(w);
+  r.ans[w]='know';r.undo.push({type:'know',w:w});markBookDirty();afterAnswer()}
+function restore(w){var p=P();if(p.mastered.indexOf(w)<0)return;unmarkMastered(w);
   var r=R();if(r.ans[w]==='know')delete r.ans[w];
   if(r.phase==='summary')r.phase='study';
+  markBookDirty();
   buildOrder();
   var W=BOOKS[settings.book].words;for(var i=0;i<order.length;i++)if(W[order[i]][0]===w){p.i=i;break}}
 function undo(){var p=P(),r=R();
   if(r.undo&&r.undo.length){
     var a=r.undo.pop(),w=a.w;
     if(r.ans[w]===a.type)delete r.ans[w];
-    if(a.type==='know'){var k=p.mastered.indexOf(w);if(k>=0)p.mastered.splice(k,1)}
+    if(a.type==='know')unmarkMastered(w);
     if(a.type==='dont'&&a.addedNb){
       for(var i=nb.length-1;i>=0;i--)if(nb[i].w===w&&nb[i].b===settings.book){nb.splice(i,1);break}
+      upsertNbTombstone(settings.book,w);
     }
     if(r.phase==='summary')r.phase='study';
+    markBookDirty();
     buildOrder();
     var W=BOOKS[settings.book].words;for(var j=0;j<order.length;j++)if(W[order[j]][0]===w){p.i=j;break}
     show();return;
   }
   if(!p.mastered.length)return;restore(p.mastered[p.mastered.length-1]);show()}
 function dont(){if(!cur||R().phase==='summary')return;var r=R(),w=cur[0],addedNb=false;P().unknown++;
-  if(!inNb(w,settings.book)){nb.push({w:w,p:cur[1],m:cur[2],b:settings.book,t:Date.now()});addedNb=true}
-  r.ans[w]='dont';r.undo.push({type:'dont',w:w,addedNb:addedNb});afterAnswer()}
+  if(!inNb(w,settings.book)){nb.push({w:w,p:cur[1],m:cur[2],b:settings.book,t:Date.now()});removeNbTombstone(settings.book,w);addedNb=true}
+  r.ans[w]='dont';r.undo.push({type:'dont',w:w,addedNb:addedNb});markBookDirty();afterAnswer()}
 function confirmResetRounds(){
   if(!confirm('确定重新从第1轮开始吗？已掌握的单词和生词本不会被清除，当前轮次的作答记录会清空，将用还未掌握的词重新排第1轮。'))return;
   R().phase='study';
@@ -365,6 +425,7 @@ function beginNextRound(){
   var nextQ=r.queue.filter(function(ix){return r.ans[W[ix][0]]==='dont'});
   if(!nextQ.length)return;
   startRound((r.n||1)+1,nextQ);
+  markBookDirty();
   buildOrder();show();
 }
 $('knowBtn').onclick=know;$('undoBtn').onclick=undo;$('dontBtn').onclick=dont;$('nextBtn').onclick=next;$('prevBtn').onclick=prev;
@@ -375,24 +436,25 @@ $('playBtn').onclick=function(){play()};
 $('mean').onclick=function(){this.classList.remove('hide')};
 $('autoPlay').onchange=function(){settings.autoPlay=this.checked;save()};
 $('hideMean').onchange=function(){settings.hideMean=this.checked;if(R().phase!=='summary')show()};
-$('shuffle').onchange=function(){P().shuffle=this.checked;rebuildQueueView(false);show()};
-$('reshuffle').onclick=function(){var p=P();p.shuffle=true;$('shuffle').checked=true;rebuildQueueView(true);P().i=0;show()};
-$('jump').placeholder='序号';$('goBtn').onclick=function(){if(R().phase==='summary')return;var v=parseInt($('jump').value,10);if(v>=1&&v<=order.length){P().i=v-1;show()}};
+$('shuffle').onchange=function(){P().shuffle=this.checked;rebuildQueueView(false);markBookDirty();show()};
+$('reshuffle').onclick=function(){var p=P();p.shuffle=true;$('shuffle').checked=true;rebuildQueueView(true);P().i=0;markBookDirty();show()};
+$('jump').placeholder='序号';$('goBtn').onclick=function(){if(R().phase==='summary')return;var v=parseInt($('jump').value,10);if(v>=1&&v<=order.length){P().i=v-1;markBookDirty();show()}};
 $('jump').onkeydown=function(e){if(e.key==='Enter')$('goBtn').click()};
 $('lessonSel').onchange=function(){jumpLesson(this.value)};
 $('searchBtn').onclick=function(){var q=$('search').value.trim().toLowerCase();if(!q)return;var w=BOOKS[settings.book].words,r=R(),i;
   if(r.phase==='summary'){alert('请先开始下一轮，或撤销回到本轮再查找');return}
-  for(i=0;i<order.length;i++)if(w[order[i]][0].toLowerCase()===q){P().i=i;show();return}
+  for(i=0;i<order.length;i++)if(w[order[i]][0].toLowerCase()===q){P().i=i;markBookDirty();show();return}
   if(P().mastered.map(function(x){return x.toLowerCase()}).indexOf(q)>=0){alert('「'+q+'」已经掌握，已从词书移除（可在「已掌握」里恢复）');return}
   for(i=0;i<r.queue.length;i++){
     var ww=w[r.queue[i]][0];
     if(ww.toLowerCase()===q){alert(r.ans[ww]==='dont'?'「'+q+'」在本轮已点过「不会」，会进入下一轮':'「'+q+'」在本轮已经作答');return}
   }
-  for(i=0;i<order.length;i++)if(w[order[i]][0].toLowerCase().indexOf(q)===0){P().i=i;show();return}
+  for(i=0;i<order.length;i++)if(w[order[i]][0].toLowerCase().indexOf(q)===0){P().i=i;markBookDirty();show();return}
   alert('当前词书的本轮里没有找到：'+q)};
 $('search').onkeydown=function(e){if(e.key==='Enter')$('searchBtn').click()};
-document.addEventListener('keydown',function(e){if(!$('notebook').classList.contains('hidden')||/INPUT|SELECT/.test(e.target.tagName))return;
+document.addEventListener('keydown',function(e){if(!$('notebook').classList.contains('hidden')||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
   if(!$('mastered').classList.contains('hidden'))return;
+  if(!$('loginModal').classList.contains('hidden')){if(e.key==='Escape')closeLoginModal();return}
   if(R().phase==='summary'){if(e.key==='Enter'&&!$('nextRoundBtn').classList.contains('hidden'))beginNextRound();return}
   if(e.key==='ArrowRight')next();else if(e.key==='ArrowLeft')prev();else if(e.key==='ArrowUp'){e.preventDefault();know()}else if(e.key==='ArrowDown'){e.preventDefault();dont()}else if(e.key===' '){e.preventDefault();play()}});
 
@@ -406,7 +468,7 @@ function renderMs(){var p=P(),L=p.mastered.slice().reverse(),W=BOOKS[settings.bo
 $('msList').onclick=function(e){var w=e.target.dataset.restore;if(w){restore(w);save();renderMs();tabLabels()}};
 $('msBtn').onclick=function(){$('study').classList.add('hidden');$('notebook').classList.add('hidden');$('mastered').classList.remove('hidden');renderMs()};
 $('msBack').onclick=function(){$('mastered').classList.add('hidden');$('study').classList.remove('hidden');show()};
-$('msReset').onclick=function(){var p=P();if(!p.mastered.length)return;if(confirm('确定把「'+BOOKS[settings.book].name+'」的 '+p.mastered.length+' 个已掌握单词全部恢复到词书吗？本轮进度也会重置，从第1轮重新开始。')){p.mastered=[];p.i=0;resetRounds();renderMs();tabLabels()}};
+$('msReset').onclick=function(){var p=P();if(!p.mastered.length)return;if(confirm('确定把「'+BOOKS[settings.book].name+'」的 '+p.mastered.length+' 个已掌握单词全部恢复到词书吗？本轮进度也会重置，从第1轮重新开始。')){p.mastered.slice().forEach(unmarkMastered);p.mastered=[];p.i=0;resetRounds();renderMs();tabLabels()}};
 
 // notebook
 function filtered(){var f=$('nbFilter').value;return nb.filter(function(x){return!f||x.b===f})}
@@ -415,11 +477,11 @@ function renderNb(){$('nbCount').textContent=nb.length;var L=filtered();
   var h='<table><thead><tr><th>序号</th><th>单词</th><th>音标</th><th>中文释义</th><th>词书</th><th></th></tr></thead><tbody>';
   L.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td><b>'+esc(x.w)+'</b> <button class="del" style="color:var(--c)" data-play="'+esc(x.w)+'">🔊</button></td><td>'+esc(fmtPhon(x.p))+'</td><td>'+esc(x.m)+'</td><td>'+esc(BOOKS[x.b]?BOOKS[x.b].name.split(' ')[0]:'')+'</td><td><button class="del" data-del="'+nb.indexOf(x)+'">删除</button></td></tr>'});
   $('nbList').innerHTML=h+'</tbody></table>'}
-$('nbList').onclick=function(e){var d=e.target.dataset;if(d.del!==undefined){nb.splice(+d.del,1);save();renderNb()}else if(d.play)play(d.play)};
+$('nbList').onclick=function(e){var d=e.target.dataset;if(d.del!==undefined){var it=nb[+d.del];if(it)upsertNbTombstone(it.b,it.w);nb.splice(+d.del,1);save();renderNb()}else if(d.play)play(d.play)};
 $('nbFilter').onchange=renderNb;
 $('nbBtn').onclick=function(){$('study').classList.add('hidden');$('mastered').classList.add('hidden');$('notebook').classList.remove('hidden');renderNb()};
 $('backBtn').onclick=function(){$('notebook').classList.add('hidden');$('study').classList.remove('hidden');show()};
-$('clearBtn').onclick=function(){if(!nb.length)return;var f=$('nbFilter').value;if(confirm(f?'确定清空「'+BOOKS[f].name+'」的生词吗？':'确定清空整个生词本吗？')){nb=f?nb.filter(function(x){return x.b!==f}):[];save();renderNb()}};
+$('clearBtn').onclick=function(){if(!nb.length)return;var f=$('nbFilter').value;if(confirm(f?'确定清空「'+BOOKS[f].name+'」的生词吗？':'确定清空整个生词本吗？')){(f?nb.filter(function(x){return x.b===f}):nb).forEach(function(x){upsertNbTombstone(x.b,x.w)});nb=f?nb.filter(function(x){return x.b!==f}):[];save();renderNb()}};
 
 function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
 function buildPrint(){var L=filtered(),f=$('nbFilter').value;
@@ -434,7 +496,258 @@ $('csvBtn').onclick=function(){var L=filtered();if(!L.length){alert('生词本�
   var rows=[['序号','单词','音标','中文释义','词书']].concat(L.map(function(x,i){return[i+1,x.w,fmtPhon(x.p),x.m,BOOKS[x.b]?BOOKS[x.b].name:'']}));
   var blob=new Blob(['\ufeff'+rows.map(function(r){return r.map(q).join(',')}).join('\r\n')],{type:'text/csv;charset=utf-8'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='生词本_'+today()+'.csv';document.body.appendChild(a);a.click();a.remove()};
+// ——— 可选登录同步（未配置时以下全部不会跑，界面与原来一致）———
+function supabaseCreds(){
+  return{
+    url:String((window.__VOCAB_SUPABASE_URL||SUPABASE_URL||'')).trim(),
+    key:String((window.__VOCAB_SUPABASE_ANON_KEY||SUPABASE_ANON_KEY||'')).trim()
+  };
+}
+function syncEnabled(){var c=supabaseCreds();return !!(c.url&&c.key)}
+var sbClient=null, loggedInUser=null, lastSyncAt=null, lastSyncError=null, syncing=false, syncAgain=false, syncTimer=null, bootSyncStarted=false;
+
+function getLocalPayload(){
+  return{
+    v:1,
+    notebook:nb.slice(),
+    notebookTombstones:(syncMeta.notebookTombstones||[]).slice(),
+    progress:progress,
+    rounds:rounds
+  };
+}
+function applyPayload(merged){
+  if(!merged)return;
+  nb=Array.isArray(merged.notebook)?merged.notebook:[];
+  syncMeta={notebookTombstones:Array.isArray(merged.notebookTombstones)?merged.notebookTombstones:[]};
+  progress=merged.progress&&typeof merged.progress==='object'?merged.progress:{};
+  rounds=merged.rounds&&typeof merged.rounds==='object'?merged.rounds:{};
+}
+function refreshAfterSync(){
+  try{
+    if(!$('notebook').classList.contains('hidden'))renderNb();
+    if(!$('mastered').classList.contains('hidden'))renderMs();
+    if(!$('study').classList.contains('hidden')){buildOrder();fillLessonSel();show()}
+    else{tabLabels();$('nbCount').textContent=nb.length}
+  }catch(e){}
+}
+function fmtSyncTime(ts){
+  if(!ts)return'';
+  var d=new Date(ts),now=new Date();
+  var hh=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  var same=d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
+  if(same)return'上次同步 '+hh;
+  return'上次同步 '+d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+' '+hh;
+}
+function setSyncStatus(text,isErr){
+  var el=$('syncStatus');if(!el)return;
+  el.textContent=text||'';
+  el.classList.toggle('err',!!isErr);
+}
+function updateSyncUI(){
+  if(!syncEnabled()){
+    $('syncArea').classList.add('hidden');
+    return;
+  }
+  $('syncArea').classList.remove('hidden');
+  var on=!!loggedInUser;
+  $('loginBtn').classList.toggle('hidden',on);
+  $('syncLoggedIn').classList.toggle('hidden',!on);
+  if(on){
+    $('syncEmail').textContent=loggedInUser.email||'';
+    $('syncEmail').title=loggedInUser.email||'';
+  }
+  if(lastSyncError)setSyncStatus('同步失败'+(lastSyncError?('：'+lastSyncError):''),true);
+  else if(syncing)setSyncStatus('同步中…',false);
+  else if(lastSyncAt)setSyncStatus(fmtSyncTime(lastSyncAt),false);
+  else setSyncStatus(on?'':'',false);
+}
+function openLoginModal(){$('loginModal').classList.remove('hidden');$('loginMsg').textContent='';$('loginMsg').className='';setTimeout(function(){$('loginEmail').focus()},50)}
+function closeLoginModal(){$('loginModal').classList.add('hidden')}
+function loginMsg(text,isErr){var el=$('loginMsg');el.textContent=text||'';el.className=isErr?'err':''}
+
+function loadSupabase(){
+  if(!syncEnabled())return Promise.resolve(null);
+  if(sbClient)return Promise.resolve(sbClient);
+  var creds=supabaseCreds();
+  function make(create){
+    sbClient=create(creds.url,creds.key);
+    return sbClient;
+  }
+  if(typeof window.__vocabCreateSupabase==='function'){
+    try{return Promise.resolve(make(window.__vocabCreateSupabase))}catch(e){return Promise.reject(e)}
+  }
+  if(window.supabase&&window.supabase.createClient){
+    return Promise.resolve(make(window.supabase.createClient));
+  }
+  return new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+    s.async=true;
+    s.onload=function(){
+      try{
+        if(!window.supabase||!window.supabase.createClient)throw new Error('supabase 脚本加载不完整');
+        resolve(make(window.supabase.createClient));
+      }catch(e){reject(e)}
+    };
+    s.onerror=function(){reject(new Error('无法加载同步组件'))};
+    document.head.appendChild(s);
+  });
+}
+
+function mergeFn(){
+  return(window.VocabSyncMerge&&window.VocabSyncMerge.mergeVocabData)||function(local,remote){return local};
+}
+
+function syncNow(reason){
+  if(!syncEnabled())return Promise.resolve();
+  if(syncing){syncAgain=true;return Promise.resolve()}
+  syncing=true;
+  lastSyncError=null;
+  updateSyncUI();
+  return loadSupabase().then(function(sb){
+    if(!sb)throw new Error('未配置');
+    return sb.auth.getSession().then(function(res){
+      var session=res&&res.data&&res.data.session;
+      var user=session&&session.user;
+      loggedInUser=user||null;
+      if(!user){updateSyncUI();return}
+      var uid=user.id;
+      return sb.from('vocab_data').select('data,updated_at').eq('user_id',uid).maybeSingle().then(function(sel){
+        if(sel.error)throw sel.error;
+        var remote=sel.data&&sel.data.data?sel.data.data:null;
+        var merged=mergeFn()(getLocalPayload(),remote);
+        applyingSync=true;
+        try{applyPayload(merged);persist();refreshAfterSync()}finally{applyingSync=false}
+        return sb.from('vocab_data').upsert({
+          user_id:uid,
+          data:merged,
+          updated_at:new Date().toISOString()
+        }).then(function(up){
+          if(up.error)throw up.error;
+          lastSyncAt=Date.now();
+          lastSyncError=null;
+          try{LS('sync_status',{lastOk:lastSyncAt})}catch(e){}
+        });
+      });
+    });
+  }).catch(function(err){
+    var msg=(err&&(err.message||err.error_description||err.msg))||'网络错误';
+    lastSyncError=String(msg).replace(/\s+/g,' ').slice(0,80);
+  }).then(function(){
+    syncing=false;
+    updateSyncUI();
+    if(syncAgain){syncAgain=false;return syncNow('retry')}
+  });
+}
+function scheduleSync(){
+  if(!syncEnabled()||!loggedInUser)return;
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(function(){syncTimer=null;syncNow('debounce')},3000);
+}
+function flushSync(){
+  if(!syncEnabled()||!loggedInUser)return;
+  if(syncTimer){clearTimeout(syncTimer);syncTimer=null}
+  syncNow('flush');
+}
+
+function authError(err){return(err&&(err.message||err.error_description))||'出错了，请稍后再试'}
+function afterAuth(session,okText){
+  loggedInUser=session&&session.user?session.user:null;
+  updateSyncUI();
+  if(loggedInUser){
+    loginMsg(okText||'登录成功',false);
+    closeLoginModal();
+    syncNow('login');
+  }
+}
+
+$('loginBtn').onclick=openLoginModal;
+$('loginClose').onclick=closeLoginModal;
+$('loginModal').addEventListener('click',function(e){if(e.target===$('loginModal'))closeLoginModal()});
+$('syncNowBtn').onclick=function(){syncNow('manual')};
+$('logoutBtn').onclick=function(){
+  loadSupabase().then(function(sb){return sb?sb.auth.signOut():null}).catch(function(){}).then(function(){
+    loggedInUser=null;updateSyncUI();
+  });
+};
+function credEmailPass(){
+  var email=($('loginEmail').value||'').trim();
+  var password=$('loginPassword').value||'';
+  if(!email){loginMsg('请输入邮箱',true);return null}
+  if(!password||password.length<6){loginMsg('请输入至少 6 位密码',true);return null}
+  return{email:email,password:password};
+}
+$('signInBtn').onclick=function(){
+  var c=credEmailPass();if(!c)return;
+  loginMsg('正在登录…',false);
+  loadSupabase().then(function(sb){
+    return sb.auth.signInWithPassword(c);
+  }).then(function(res){
+    if(res.error)throw res.error;
+    afterAuth(res.data&&res.data.session,'登录成功');
+  }).catch(function(err){loginMsg(authError(err),true)});
+};
+$('signUpBtn').onclick=function(){
+  var c=credEmailPass();if(!c)return;
+  loginMsg('正在注册…',false);
+  loadSupabase().then(function(sb){
+    return sb.auth.signUp({email:c.email,password:c.password,options:{emailRedirectTo:location.origin+location.pathname}});
+  }).then(function(res){
+    if(res.error)throw res.error;
+    var session=res.data&&res.data.session;
+    if(session)afterAuth(session,'注册并登录成功');
+    else loginMsg('注册成功。若已关闭邮箱确认，请再点「登录」；若需要确认，请先到邮箱点确认链接。',false);
+  }).catch(function(err){loginMsg(authError(err),true)});
+};
+$('magicLinkBtn').onclick=function(){
+  var email=($('loginEmail').value||'').trim();
+  if(!email){loginMsg('请输入邮箱',true);return}
+  loginMsg('正在发送登录链接…',false);
+  loadSupabase().then(function(sb){
+    return sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.origin+location.pathname}});
+  }).then(function(res){
+    if(res.error)throw res.error;
+    loginMsg('已发送登录链接，请到邮箱查收。',false);
+  }).catch(function(err){loginMsg(authError(err),true)});
+};
+$('loginPassword').addEventListener('keydown',function(e){if(e.key==='Enter')$('signInBtn').click()});
+
+document.addEventListener('visibilitychange',function(){
+  if(!syncEnabled()||!loggedInUser)return;
+  if(document.visibilityState==='hidden')flushSync();
+  else syncNow('visible');
+});
+window.addEventListener('pagehide',function(){flushSync()});
+window.addEventListener('beforeunload',function(){flushSync()});
+
+function bootSync(){
+  if(!syncEnabled()||bootSyncStarted)return;
+  bootSyncStarted=true;
+  try{var st=LS('sync_status');if(st&&st.lastOk)lastSyncAt=st.lastOk}catch(e){}
+  updateSyncUI();
+  loadSupabase().then(function(sb){
+    if(!sb)return;
+    sb.auth.onAuthStateChange(function(event,session){
+      loggedInUser=session&&session.user?session.user:null;
+      updateSyncUI();
+      if(!loggedInUser)return;
+      if(event==='SIGNED_OUT')return;
+      if(event==='TOKEN_REFRESHED'&&lastSyncAt)return;
+      if(event==='SIGNED_IN'||event==='INITIAL_SESSION'||event==='USER_UPDATED')syncNow(event==='SIGNED_IN'?'login':'load');
+    });
+    return sb.auth.getSession().then(function(res){
+      loggedInUser=res&&res.data&&res.data.session&&res.data.session.user||null;
+      updateSyncUI();
+      if(loggedInUser)syncNow('load');
+    });
+  }).catch(function(err){
+    lastSyncError='无法加载同步组件';
+    updateSyncUI();
+  });
+}
+
 init();
+bootSync();
 })();
 </script>
 </body>
